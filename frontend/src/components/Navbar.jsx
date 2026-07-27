@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { BRAND } from "@/lib/data";
 import { NAV } from "@/constants/testIds";
+import { useI18n } from "@/lib/i18n";
+import LanguageToggle from "@/components/LanguageToggle";
 
 const links = [
   { label: "Home", href: "/", id: NAV.home },
@@ -21,8 +23,10 @@ const links = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const nav = useNavigate();
   const loc = useLocation();
+  const { t } = useI18n();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -31,6 +35,15 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => setOpen(false), [loc.pathname]);
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("ka_user") || "null");
+      setIsAdmin(!!u?.is_admin);
+    } catch {
+      setIsAdmin(false);
+    }
+  }, [loc.pathname]);
 
   const go = (href) => {
     setOpen(false);
@@ -100,20 +113,30 @@ export default function Navbar() {
           </nav>
 
           {/* Right actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            <LanguageToggle />
+            {isAdmin && (
+              <Link
+                to="/admin"
+                data-testid="nav-admin"
+                className="hidden md:inline text-[11px] tracking-[0.28em] uppercase text-gold hover:text-white transition-colors"
+              >
+                Admin
+              </Link>
+            )}
             <Link
               to="/login"
               data-testid={NAV.clientPortal}
               className="hidden md:inline text-[11px] tracking-[0.28em] uppercase text-white/70 hover:text-gold transition-colors"
             >
-              Client Portal
+              {t("nav.client")}
             </Link>
             <button
               onClick={() => go("/#contact")}
               data-testid={NAV.bookCta}
               className="hidden md:inline-flex btn-gold"
             >
-              <span>Book Consultation</span>
+              <span>{t("nav.book")}</span>
             </button>
             <button
               onClick={() => setOpen(true)}

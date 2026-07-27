@@ -196,6 +196,93 @@ def test_blog_unknown(s):
 
 
 # ---------- AI Consult (stream) ----------
+# ---------- Admin ----------
+ADMIN_EMAIL = "admin@atelier.com"
+ADMIN_PW = "Admin@Atelier2025"
+
+
+@pytest.fixture(scope="session")
+def admin_token(s):
+    r = s.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PW})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["user"]["is_admin"] is True
+    return data["token"]
+
+
+def test_register_includes_is_admin_false(s):
+    email = f"test_admflag_{uuid.uuid4().hex[:8]}@atelier.com"
+    r = s.post(f"{API}/auth/register", json={"name": "TEST_X", "email": email, "password": "Atelier@2025"})
+    assert r.status_code == 200
+    assert r.json()["user"].get("is_admin") is False
+
+
+def test_admin_leads_unauth(s):
+    r = s.get(f"{API}/admin/leads")
+    assert r.status_code == 401
+
+
+def test_admin_leads_forbidden_for_regular_user(s, new_user):
+    r = s.get(f"{API}/admin/leads", headers={"Authorization": f"Bearer {new_user['token']}"})
+    assert r.status_code == 403
+
+
+def test_admin_leads_ok(s, admin_token):
+    r = s.get(f"{API}/admin/leads", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+
+def test_admin_appointments_ok(s, admin_token):
+    r = s.get(f"{API}/admin/appointments", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+
+def test_admin_quotes_ok(s, admin_token):
+    r = s.get(f"{API}/admin/quotes", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+
+def test_admin_stats_ok(s, admin_token):
+    r = s.get(f"{API}/admin/stats", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r.status_code == 200
+    d = r.json()
+    for k in ("leads", "appointments", "quotes", "users"):
+        assert k in d and isinstance(d[k], int)
+
+
+# ---------- Quote Email Delivery ----------
+def test_quote_email_delivery_queued(s):
+    # create quote first
+    q = s.post(f"{API}/quote", json={
+        "project_type": "Villa", "area_sqft": 2000,
+        "quality_tier": "luxury", "location": "Dubai",
+    }).json()
+    r = s.post(f"{API}/quote/{q['id']}/email", json={"quote_id": q["id"], "email": "someone@test.com"})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "queued"
+
+
+def test_quote_email_delivery_unknown_quote(s):
+    r = s.post(f"{API}/quote/nonexistent-xxx/email", json={"quote_id": "nonexistent-xxx", "email": "x@test.com"})
+    assert r.status_code == 404
+
+
+# ---------- Instagram Reels ----------
+def test_instagram_reels_curated(s):
+    r = s.get(f"{API}/instagram/reels")
+    assert r.status_code == 200
+    d = r.json()
+    # Only assert curated shape if IG token not set (current env state)
+    if d.get("source") == "curated":
+        assert len(d["items"]) == 6
+        for item in d["items"]:
+            assert "id" in item and "media_url" in item and "permalink" in item and "caption" in item
+
+
+# ---------- AI Consult (stream) ----------
 def test_ai_consult_stream(s):
     session_id = f"test_{uuid.uuid4().hex[:8]}"
     payload = {"session_id": session_id, "message": "What marble suits a Dubai penthouse?"}

@@ -10,6 +10,7 @@ import Testimonials from "@/components/Testimonials";
 import BeforeAfter from "@/components/BeforeAfter";
 import VideoShowcase from "@/components/VideoShowcase";
 import Gallery from "@/components/Gallery";
+import InstagramReels from "@/components/InstagramReels";
 import Contact from "@/components/Contact";
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
       <BeforeAfter />
       <Testimonials />
       <Gallery />
+      <InstagramReels />
       <Contact />
     </div>
   );

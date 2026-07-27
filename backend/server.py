@@ -143,6 +143,12 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     return user
 
 
+async def get_admin_user(user=Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    return user
+
+
 # ---------- Health ----------
 @api_router.get("/")
 async def root():
@@ -208,11 +214,15 @@ async def register(req: RegisterRequest):
         "name": req.name,
         "email": req.email.lower(),
         "password_hash": pw_hash,
+        "is_admin": False,
         "created_at": now_iso(),
     }
     await db.users.insert_one(doc)
     token = create_token(user_id)
-    return {"token": token, "user": {"id": user_id, "name": req.name, "email": req.email.lower()}}
+    return {
+        "token": token,
+        "user": {"id": user_id, "name": req.name, "email": req.email.lower(), "is_admin": False},
+    }
 
 
 @api_router.post("/auth/login")
@@ -221,12 +231,135 @@ async def login(req: LoginRequest):
     if not user or not bcrypt.checkpw(req.password.encode(), user["password_hash"].encode()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_token(user["id"])
-    return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"]}}
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "is_admin": user.get("is_admin", False),
+        },
+    }
 
 
 @api_router.get("/auth/me")
 async def me(user=Depends(get_current_user)):
     return user
+
+
+# ---------- Admin ----------
+@api_router.get("/admin/leads")
+async def admin_leads(_=Depends(get_admin_user)):
+    return await db.contacts.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.get("/admin/appointments")
+async def admin_appts(_=Depends(get_admin_user)):
+    return await db.appointments.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.get("/admin/quotes")
+async def admin_quotes(_=Depends(get_admin_user)):
+    return await db.quotes.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.get("/admin/stats")
+async def admin_stats(_=Depends(get_admin_user)):
+    return {
+        "leads": await db.contacts.count_documents({}),
+        "appointments": await db.appointments.count_documents({}),
+        "quotes": await db.quotes.count_documents({}),
+        "users": await db.users.count_documents({}),
+    }
+
+
+# ---------- Quote Email Delivery Request ----------
+class QuoteEmailRequest(BaseModel):
+    quote_id: str
+    email: EmailStr
+    name: Optional[str] = None
+
+
+@api_router.post("/quote/{quote_id}/email")
+async def email_quote(quote_id: str, req: QuoteEmailRequest):
+    quote = await db.quotes.find_one({"id": quote_id}, {"_id": 0})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    delivery = {
+        "id": str(uuid.uuid4()),
+        "quote_id": quote_id,
+        "email": req.email,
+        "name": req.name,
+        "status": "queued",
+        "created_at": now_iso(),
+    }
+    await db.quote_email_requests.insert_one(delivery)
+    return {"status": "queued", "message": "Your PDF estimate is queued for delivery."}
+
+
+# ---------- Instagram Reels ----------
+INSTAGRAM_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
+
+
+@api_router.get("/instagram/reels")
+async def instagram_reels():
+    """Returns Instagram media if IG_ACCESS_TOKEN set; otherwise curated fallback."""
+    if INSTAGRAM_TOKEN:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get(
+                    "https://graph.instagram.com/me/media",
+                    params={
+                        "fields": "id,caption,media_type,media_url,permalink,thumbnail_url,timestamp",
+                        "limit": 9,
+                        "access_token": INSTAGRAM_TOKEN,
+                    },
+                )
+                if r.status_code == 200:
+                    return {"source": "instagram", "items": r.json().get("data", [])}
+        except Exception as e:
+            logger.warning(f"IG fetch failed: {e}")
+    # Curated fallback using our own assets
+    fallback = [
+        {
+            "id": "f1", "caption": "Villa Nishat — front elevation study. #KashmirAtelier #luxuryhomes",
+            "media_url": "https://customer-assets-agu9un31.emergentagent.net/job_5705b8c8-bfe0-4194-b328-e2be07e88aef/artifacts/kogqt5mh_1775294291099.png",
+            "permalink": "https://instagram.com/thekashmiratelier",
+            "timestamp": "2025-11-02T10:00:00Z",
+        },
+        {
+            "id": "f2", "caption": "Palm Jumeirah penthouse — sunset. #DubaiInteriors #KashmirAtelier",
+            "media_url": "https://customer-assets-agu9un31.emergentagent.net/job_5705b8c8-bfe0-4194-b328-e2be07e88aef/artifacts/wts1236q_1775748347566.png",
+            "permalink": "https://instagram.com/thekashmiratelier",
+            "timestamp": "2025-11-14T18:20:00Z",
+        },
+        {
+            "id": "f3", "caption": "A quiet majlis. Walnut. Chandelier. Burj Khalifa. #DowntownDubai",
+            "media_url": "https://customer-assets-agu9un31.emergentagent.net/job_5705b8c8-bfe0-4194-b328-e2be07e88aef/artifacts/k8utogaf_1779214285348.png",
+            "permalink": "https://instagram.com/thekashmiratelier",
+            "timestamp": "2025-11-25T12:15:00Z",
+        },
+        {
+            "id": "f4", "caption": "Chalet Gulmarg — snow-resistant elevations. #Kashmir",
+            "media_url": "https://customer-assets-agu9un31.emergentagent.net/job_5705b8c8-bfe0-4194-b328-e2be07e88aef/artifacts/066rqm8q_1782120012443.png",
+            "permalink": "https://instagram.com/thekashmiratelier",
+            "timestamp": "2025-12-04T09:00:00Z",
+        },
+        {
+            "id": "f5", "caption": "Statuario marble — a study in restraint. #interiordesign",
+            "media_url": "https://images.unsplash.com/photo-1600607687644-c7171b42498f?auto=format&fit=crop&w=1200&q=85",
+            "permalink": "https://instagram.com/thekashmiratelier",
+            "timestamp": "2025-12-08T14:00:00Z",
+        },
+        {
+            "id": "f6", "caption": "A private chandelier, a hundred kilometres from your site.",
+            "media_url": "https://images.unsplash.com/photo-1615873968403-89e068629265?auto=format&fit=crop&w=1200&q=85",
+            "permalink": "https://instagram.com/thekashmiratelier",
+            "timestamp": "2025-12-12T20:00:00Z",
+        },
+    ]
+    return {"source": "curated", "items": fallback}
 
 
 # ---------- Client dashboard ----------
@@ -331,9 +464,28 @@ async def ai_consult(req: AIRequest):
     )
 
 
-# ---------- Seed blog on startup ----------
+# ---------- Seed blog + admin on startup ----------
 @app.on_event("startup")
-async def seed_blog():
+async def seed_startup():
+    # Seed admin
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@atelier.com")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "Admin@Atelier2025")
+    existing = await db.users.find_one({"email": admin_email.lower()})
+    if not existing:
+        await db.users.insert_one({
+            "id": str(uuid.uuid4()),
+            "name": "Studio Admin",
+            "email": admin_email.lower(),
+            "password_hash": bcrypt.hashpw(admin_password.encode(), bcrypt.gensalt()).decode(),
+            "is_admin": True,
+            "created_at": now_iso(),
+        })
+        logger.info(f"Seeded admin user: {admin_email}")
+    else:
+        # ensure existing user is admin (idempotent)
+        await db.users.update_one({"email": admin_email.lower()}, {"$set": {"is_admin": True}})
+
+    # Seed blog
     count = await db.blog_posts.count_documents({})
     if count == 0:
         seed = [

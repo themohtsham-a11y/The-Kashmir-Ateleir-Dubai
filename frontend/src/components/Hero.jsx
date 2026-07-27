@@ -1,11 +1,23 @@
-import { useEffect, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, ArrowDown } from "lucide-react";
 import { RevealLines } from "@/components/Reveal";
 import { USER_ASSETS, IMG, BRAND } from "@/lib/data";
 import { HERO } from "@/constants/testIds";
+import { useI18n } from "@/lib/i18n";
+
+const HERO_FRAMES = [
+  USER_ASSETS.dubaiPenthouse,
+  USER_ASSETS.arabicMajlis,
+  USER_ASSETS.villaElevations,
+  USER_ASSETS.kashmirMountainHouse,
+  IMG.marble,
+  IMG.chandelier,
+];
 
 export default function Hero() {
+  const { t } = useI18n();
+  const [frame, setFrame] = useState(0);
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -20,12 +32,14 @@ export default function Hero() {
   };
 
   useEffect(() => {
-    // preload
-    const imgs = [USER_ASSETS.dubaiPenthouse, USER_ASSETS.arabicMajlis, IMG.villa1];
-    imgs.forEach((s) => {
+    HERO_FRAMES.forEach((src) => {
       const i = new Image();
-      i.src = s;
+      i.src = src;
     });
+    const iv = setInterval(() => {
+      setFrame((f) => (f + 1) % HERO_FRAMES.length);
+    }, 5000);
+    return () => clearInterval(iv);
   }, []);
 
   return (
@@ -34,15 +48,42 @@ export default function Hero() {
       data-testid={HERO.root}
       className="relative min-h-[110vh] w-full overflow-hidden bg-ink"
     >
-      {/* Background image with slow zoom + parallax */}
+      {/* Cinematic Ken-Burns slideshow — user's real work + curated imagery */}
       <motion.div style={{ y, scale }} className="absolute inset-0">
-        <div
-          className="absolute inset-0 slow-zoom bg-cover bg-center"
-          style={{ backgroundImage: `url(${USER_ASSETS.dubaiPenthouse})` }}
-        />
+        <AnimatePresence>
+          <motion.div
+            key={frame}
+            initial={{ opacity: 0, scale: 1.02 }}
+            animate={{ opacity: 1, scale: 1.14 }}
+            exit={{ opacity: 0, scale: 1.18 }}
+            transition={{
+              opacity: { duration: 1.4, ease: [0.2, 0.9, 0.2, 1] },
+              scale: { duration: 8, ease: "linear" },
+            }}
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${HERO_FRAMES[frame]})` }}
+          />
+        </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-b from-ink/40 via-ink/55 to-ink" />
         <div className="absolute inset-0 bg-gradient-to-r from-ink/70 via-transparent to-ink/40" />
       </motion.div>
+
+      {/* Frame index — bottom-left overlay, quiet reference to editorial cinema */}
+      <div className="absolute bottom-24 md:bottom-32 left-6 md:left-16 lg:left-20 z-30 flex items-center gap-3 text-white/50">
+        <span className="chapter-num tabular-nums text-gold">
+          {String(frame + 1).padStart(2, "0")}
+        </span>
+        <span className="w-16 h-px bg-white/20 relative">
+          <span
+            className="absolute top-0 left-0 h-full bg-gold origin-left transition-all duration-[5000ms] ease-linear"
+            style={{ width: "100%", animation: "none" }}
+            key={frame}
+          />
+        </span>
+        <span className="chapter-num tabular-nums">
+          {String(HERO_FRAMES.length).padStart(2, "0")}
+        </span>
+      </div>
 
       <div className="grain absolute inset-0 pointer-events-none" />
 
@@ -67,7 +108,7 @@ export default function Hero() {
             transition={{ delay: 0.4, duration: 0.9 }}
             className="eyebrow mb-8"
           >
-            Chapter 00 · A Manifesto
+            {t("hero.chapter")}
           </motion.div>
 
           {/* Kinetic headline */}
@@ -76,7 +117,14 @@ export default function Hero() {
             className="font-display text-white text-[15vw] md:text-[9.2vw] leading-[0.92] tracking-[-0.03em] font-light"
           >
             <RevealLines
-              lines={["We don't build", <>houses. We <em className="italic font-normal text-gold">craft</em></>, "timeless masterpieces."]}
+              lines={[
+                t("hero.headline1"),
+                <>
+                  {t("hero.headline2")}{" "}
+                  <em className="italic font-normal text-gold">{t("hero.headline3")}</em>
+                </>,
+                t("hero.headline4"),
+              ]}
               delay={0.6}
             />
           </h1>
@@ -87,9 +135,7 @@ export default function Hero() {
             transition={{ delay: 1.6, duration: 1 }}
             className="mt-10 max-w-2xl text-white/75 text-sm md:text-base leading-relaxed tracking-[0.02em]"
           >
-            Luxury Architecture · Premium Construction · Bespoke Interiors · Complete
-            Turnkey Solutions — from a family atelier headquartered between Srinagar
-            and Dubai.
+            {t("hero.sub")}
           </motion.p>
 
           <motion.div
@@ -103,7 +149,7 @@ export default function Hero() {
               data-testid={HERO.bookConsult}
               className="btn-gold"
             >
-              <span>Book Consultation</span>
+              <span>{t("hero.cta.book")}</span>
               <ArrowUpRight className="w-4 h-4" />
             </button>
             <button
@@ -111,7 +157,7 @@ export default function Hero() {
               data-testid={HERO.viewPortfolio}
               className="btn-ghost"
             >
-              <span>View Portfolio</span>
+              <span>{t("hero.cta.portfolio")}</span>
               <ArrowUpRight className="w-4 h-4" />
             </button>
           </motion.div>
@@ -128,19 +174,19 @@ export default function Hero() {
             <div>
               <div className="font-display text-3xl md:text-4xl text-gold">250+</div>
               <div className="text-[10px] tracking-[0.28em] uppercase text-white/60 mt-1">
-                Projects
+                {t("hero.stats.projects")}
               </div>
             </div>
             <div>
               <div className="font-display text-3xl md:text-4xl text-gold">15+</div>
               <div className="text-[10px] tracking-[0.28em] uppercase text-white/60 mt-1">
-                Years
+                {t("hero.stats.years")}
               </div>
             </div>
             <div>
               <div className="font-display text-3xl md:text-4xl text-gold">2</div>
               <div className="text-[10px] tracking-[0.28em] uppercase text-white/60 mt-1">
-                Studios
+                {t("hero.stats.studios")}
               </div>
             </div>
           </div>

@@ -12,6 +12,7 @@ import WhatsAppFab from "@/components/WhatsAppFab";
 import AIAssistant from "@/components/AIAssistant";
 import CostCalculator from "@/components/CostCalculator";
 import AppointmentBooking from "@/components/AppointmentBooking";
+import { I18nProvider } from "@/lib/i18n";
 
 import Home from "@/pages/Home";
 import Portfolio from "@/pages/Portfolio";
@@ -19,6 +20,7 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import Login from "@/pages/Login";
 import ClientDashboard from "@/pages/ClientDashboard";
+import Admin from "@/pages/Admin";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -29,40 +31,52 @@ function ScrollToTop() {
 }
 
 function App() {
+  useEffect(() => {
+    // Register PWA service worker in production
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  }, []);
+
   return (
     <div className="App bg-ink min-h-screen text-white">
-      <BrowserRouter>
-        <ScrollToTop />
-        <SmoothScroll>
-          <CursorGlow />
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/client" element={<ClientDashboard />} />
-          </Routes>
-          <Footer />
-          <WhatsAppFab />
-          <AppointmentBooking />
-          <CostCalculator />
-          <AIAssistant />
-          <Toaster
-            position="bottom-center"
-            theme="dark"
-            toastOptions={{
-              style: {
-                background: "#0B0B0B",
-                border: "1px solid rgba(212,175,55,0.35)",
-                color: "#fff",
-                fontFamily: "Inter, sans-serif",
-              },
-            }}
-          />
-        </SmoothScroll>
-      </BrowserRouter>
+      <I18nProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+          <SmoothScroll>
+            <CursorGlow />
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/client" element={<ClientDashboard />} />
+              <Route path="/admin" element={<Admin />} />
+            </Routes>
+            <Footer />
+            <WhatsAppFab />
+            <AppointmentBooking />
+            <CostCalculator />
+            <AIAssistant />
+            <Toaster
+              position="bottom-center"
+              theme="dark"
+              toastOptions={{
+                style: {
+                  background: "#0B0B0B",
+                  border: "1px solid rgba(212,175,55,0.35)",
+                  color: "#fff",
+                  fontFamily: "Inter, sans-serif",
+                },
+              }}
+            />
+          </SmoothScroll>
+        </BrowserRouter>
+      </I18nProvider>
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calculator, X, ArrowUpRight } from "lucide-react";
+import { Calculator, X, ArrowUpRight, Download, Mail } from "lucide-react";
 import { api } from "@/lib/api";
 import { CALC } from "@/constants/testIds";
 import { FadeUp } from "@/components/Reveal";
+import { generateQuotePDF } from "@/lib/pdf";
+import { toast } from "sonner";
 
 const TIERS = [
   { v: "premium", label: "Premium", note: "Considered specification, curated finishes." },
@@ -26,6 +28,27 @@ export default function CostCalculator() {
   });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [emailFormOpen, setEmailFormOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  const sendEmail = async () => {
+    if (!emailTo || !result?.id) {
+      toast.error("Enter a valid email.");
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      await api.post(`/quote/${result.id}/email`, { quote_id: result.id, email: emailTo });
+      setEmailSent(true);
+      toast.success("Your PDF estimate is queued.");
+    } catch (err) {
+      toast.error("Failed to queue. Please try again.");
+    } finally {
+      setEmailBusy(false);
+    }
+  };
 
   const inr = (n) =>
     n >= 1e7
@@ -195,6 +218,66 @@ export default function CostCalculator() {
                         For a {result.area_sqft.toLocaleString("en-IN")} sqft{" "}
                         {result.project_type.toLowerCase()} at {result.quality_tier.replace("_", "-")} tier in {result.location}.
                       </p>
+
+                      <div className="mt-5 pt-5 border-t border-gold/20 flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            generateQuotePDF(result);
+                            toast.success("PDF downloaded.");
+                          }}
+                          data-testid="calc-download-pdf"
+                          className="btn-gold"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download PDF</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEmailFormOpen(true)}
+                          data-testid="calc-email-open"
+                          className="btn-ghost"
+                        >
+                          <Mail className="w-4 h-4" />
+                          <span>Email me a copy</span>
+                        </button>
+                      </div>
+
+                      {emailFormOpen && (
+                        <div className="mt-5 pt-5 border-t border-white/10">
+                          <div className="chapter-num mb-3">Delivery</div>
+                          <div className="flex flex-wrap gap-3 items-end">
+                            <label className="flex-1 min-w-[220px] block">
+                              <input
+                                type="email"
+                                value={emailTo}
+                                onChange={(e) => setEmailTo(e.target.value)}
+                                placeholder="your@email.com"
+                                data-testid="calc-email-to"
+                                className="ka-input"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={sendEmail}
+                              disabled={emailBusy}
+                              data-testid="calc-email-send"
+                              className="btn-gold"
+                            >
+                              <span>{emailBusy ? "Sending…" : "Send"}</span>
+                              <ArrowUpRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {emailSent && (
+                            <div
+                              data-testid="calc-email-success"
+                              className="mt-3 text-gold text-xs tracking-wide"
+                            >
+                              Queued. A director will send your PDF shortly.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </FadeUp>
                 )}
