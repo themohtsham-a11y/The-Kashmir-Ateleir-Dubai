@@ -95,6 +95,24 @@ def test_quote_estimation(s, tier, lo, hi):
     assert d["estimate_max"] == hi * area
 
 
+def test_quote_empty_email_coerced(s):
+    """Regression: empty email string should be coerced to None (not 422)."""
+    r = s.post(f"{API}/quote", json={
+        "project_type": "Villa",
+        "area_sqft": 3000,
+        "quality_tier": "luxury",
+        "location": "Srinagar",
+        "name": "",
+        "email": "",
+        "phone": "",
+    })
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["estimate_min"] == 5500 * 3000
+    assert d["estimate_max"] == 9000 * 3000
+
+
+
 # ---------- Auth ----------
 @pytest.fixture(scope="session")
 def new_user(s):

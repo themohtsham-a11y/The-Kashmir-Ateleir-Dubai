@@ -37,8 +37,21 @@ export default function CostCalculator() {
   const submit = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/quote", { ...f, area_sqft: Number(f.area_sqft) });
+      const payload = {
+        project_type: f.project_type,
+        area_sqft: Number(f.area_sqft),
+        quality_tier: f.quality_tier,
+        location: f.location,
+      };
+      if (f.name) payload.name = f.name;
+      if (f.email) payload.email = f.email;
+      if (f.phone) payload.phone = f.phone;
+      const { data } = await api.post("/quote", payload);
       setResult(data);
+    } catch (err) {
+      // toast handled at UI level via error state
+      // eslint-disable-next-line no-console
+      console.error("quote error", err);
     } finally {
       setBusy(false);
     }
