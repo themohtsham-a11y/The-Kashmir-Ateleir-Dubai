@@ -2,13 +2,11 @@
   "services": {
     "frontend": {
       "root": "frontend",
-      "framework": "create-react-app",
-      "nodeVersion": "20.x"
+      "framework": "create-react-app"
     },
     "backend": {
       "root": "backend",
-      "entrypoint": "server.py",
-      "nodeVersion": "20.x"
+      "entrypoint": "server.py"
     }
   },
   "rewrites": [
