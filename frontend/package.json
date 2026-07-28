@@ -1,4 +1,12 @@
 {
+  "engines"{
+  "name": "frontend",
+  "version": "0.1.0",
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+...
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
