@@ -89,7 +89,7 @@ export default function Hero() {
 
       {/* Vertical side rails */}
       <div className="hidden md:flex absolute left-6 lg:left-12 top-0 bottom-0 items-center pointer-events-none z-10">
-        <span className="vert-text">The Kashmir Atelier · Since 2009</span>
+        <span className="vert-text">The Kashmir Atelier · Since 2023</span>
       </div>
       <div className="hidden md:flex absolute right-6 lg:right-12 top-0 bottom-0 items-center pointer-events-none z-10">
         <span className="vert-text">Srinagar · Dubai · India</span>
