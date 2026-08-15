@@ -178,7 +178,7 @@ export default function Hero() {
               </div>
             </div>
             <div>
-              <div className="font-display text-3xl md:text-4xl text-gold">15+</div>
+              <div className="font-display text-3xl md:text-4xl text-gold">4+</div>
               <div className="text-[10px] tracking-[0.28em] uppercase text-white/60 mt-1">
                 {t("hero.stats.years")}
               </div>
