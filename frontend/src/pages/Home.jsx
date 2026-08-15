@@ -2,6 +2,7 @@ import Hero from "@/components/Hero";
 import Marquee from "@/components/Marquee";
 import About from "@/components/About";
 import Services from "@/components/Services";
+import MaterialLibrary from "@/components/MaterialLibrary";
 import FeaturedProjects from "@/components/FeaturedProjects";
 import WhyChoose from "@/components/WhyChoose";
 import ProcessTimeline from "@/components/ProcessTimeline";
@@ -20,6 +21,7 @@ export default function Home() {
       <Marquee />
       <About />
       <Services />
+      <MaterialLibrary />
       <FeaturedProjects />
       <WhyChoose />
       <ProcessTimeline />
